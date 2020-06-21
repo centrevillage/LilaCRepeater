@@ -1,0 +1,9 @@
+(sym_lib_table
+  (lib (name daisy-eagle-import)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/daisy-eagle-import.lib)(options "")(descr ""))
+  (lib (name PJ301BM)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/PJ301BM.lib)(options "")(descr ""))
+  (lib (name thonkiconn)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/thonkiconn.lib)(options "")(descr ""))
+  (lib (name ldk320)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/ldk320.lib)(options "")(descr ""))
+  (lib (name 74ahct1g125)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/74ahct1g125.lib)(options "")(descr ""))
+  (lib (name slider_pot)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/slider_pot.lib)(options "")(descr ""))
+  (lib (name micro_sd_akizuki)(type Legacy)(uri C:/projects/dooper/hardware/pcb/libs/symbols/micro_sd_akizuki.lib)(options "")(descr ""))
+)
