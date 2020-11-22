@@ -1,8 +1,8 @@
 # Project Name
-TARGET = Blink
+TARGET = dooper
 
 # Sources
-CPP_SOURCES = src/Blink.cpp
+CPP_SOURCES = src/main.cpp
 
 # Library Locations
 LIBDAISY_DIR = libdaisy
