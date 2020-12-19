@@ -5,6 +5,8 @@
 [submodule "firmware/DaisySP"]
 	path = firmware/DaisySP
 	url = https://github.com/electro-smith/DaisySP.git
+	ignore = dirty
 [submodule "firmware/igb_sdk"]
 	path = firmware/igb_sdk
 	url = git@github.com:centrevillage/igb_sdk.git
+	ignore = dirty
