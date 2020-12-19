@@ -1,12 +1,41 @@
 #include <stdio.h>
 #include <string.h>
 #include "daisy_seed.h"
-//#include "hid_oled_display.h"
+
+#include <igb_stm32/base.hpp>
+#include <igb_stm32/periph/systick.hpp>
+#include <igb_stm32/periph/gpio.hpp>
+#include <igb_stm32/periph/spi.hpp>
+#include <igb_sdk/device/oled_ssd1306.hpp>
+#include <igb_daisy/periph/gpio.hpp>
+
+#include <igb_stm32/periph/flash.hpp>
+#include <igb_stm32/periph/nvic.hpp>
+#include <igb_stm32/periph/rcc.hpp>
+#include <igb_stm32/periph/tim.hpp>
+#include <igb_sdk/util/text.h>
+
+#include "stm32h7xx_ll_spi.h"
+#include "stm32h7xx_ll_gpio.h"
 
 using namespace daisy;
+using namespace igb::stm32;
+using namespace igb::sdk;
+using namespace igb::daisy;
 
 DaisySeed hardware;
-OledDisplay display;
+
+OledSsd1306<GpioPin, Spi, 128, 64> ssd1306 = {
+  .cs_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p12)),
+  .dc_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p8)),
+  .reset_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p13)),
+  .spi = Spi::newSpi(SpiType::spi1)
+};
+
+GpioPin test_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p1));
+GpioPin state_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p3));
+//static dsy_gpio test_pin;
+GpioPin btn_pin = GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p2));
 
 bool is_dirty = true;
 char text_buf[128];
@@ -25,26 +54,29 @@ enum {
 
 float slider_values[SLIDER_COUNT];
 
-#define SLIDER_DRY_VOL_PIN 22
-#define SLIDER_TRACK_VOL_PIN 21
-#define SLIDER_PAN_PIN 20
-#define SLIDER_LENGTH_PIN 19
-#define SLIDER_POS_PIN 18
-#define SLIDER_FDBK_PIN 17
-#define SLIDER_SPEED_PIN 16
+// Daisyのピン番号が0 originなのでハードウェアのGPIO番号-1で定義する
+#define SLIDER_DRY_VOL_PIN 22-1
+#define SLIDER_TRACK_VOL_PIN 21-1
+#define SLIDER_PAN_PIN 20-1
+#define SLIDER_LENGTH_PIN 19-1
+#define SLIDER_POS_PIN 18-1
+#define SLIDER_FDBK_PIN 17-1
+#define SLIDER_SPEED_PIN 16-1
 
-static dsy_gpio pin_cs;
+#define OLED_CS_PIN 12-1
+#define OLED_DC_PIN 8-1
+#define OLED_RST_PIN 13-1
 
 static inline void setup_oled() {
-  pin_cs.mode = DSY_GPIO_MODE_OUTPUT_PP;
-  pin_cs.pin  = hardware.GetPin(12);
-  dsy_gpio_init(&pin_cs);
-  dsy_gpio_write(&pin_cs, 0);
+  ssd1306.spi.prepareSpiMasterOutOnly(
+      daisy_pin_to_stm32_pin(DaisyGpioPinType::p11) /* MOSI pin */,
+      daisy_pin_to_stm32_pin(DaisyGpioPinType::p9) /* SCK pin */,
+      SpiBaudratePrescaler::DIV2);
 
-  dsy_gpio_pin oled_pins[OledDisplay::NUM_PINS];
-  oled_pins[OledDisplay::DATA_COMMAND] = hardware.GetPin(8);
-  oled_pins[OledDisplay::RESET] = hardware.GetPin(13);
-  display.Init(oled_pins);
+  ssd1306.init();
+  ssd1306.drawFillBG();
+  ssd1306.drawTextMedium("LilaC Repeater", 14, 3, 0);
+  ssd1306.process();
 }
 
 static inline void setup_adc() {
@@ -68,6 +100,17 @@ static inline void setup() {
   hardware.Configure();
   hardware.Init();
 
+  test_pin.enable();
+  test_pin.initOutputDefault();
+  test_pin.on();
+
+  state_pin.enable();
+  state_pin.initOutputDefault();
+  state_pin.off();
+
+  btn_pin.enable();
+  btn_pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
+
   setup_adc();
   setup_oled();
 }
@@ -82,12 +125,14 @@ static inline void loop() {
     }
   }
   if (is_dirty) {
-    display.Fill(true);
-    display.SetCursor(0, 0);
-    sprintf(text_buf, "%f", slider_values[SLIDER_DRY_VOL]);
-    display.WriteString(text_buf, Font_11x18, false);
-    display.Update();
+    ssd1306.drawFillBG();
+    text_from_uint16(text_buf, (uint16_t)(slider_values[SLIDER_DRY_VOL] * 1024.0f));
+    ssd1306.drawTextMedium(text_buf, 6, 2, 0);
+    ssd1306.process();
+    is_dirty = false;
   }
+
+  test_pin.write(!btn_pin.read());
 }
 
 int main(void) {
