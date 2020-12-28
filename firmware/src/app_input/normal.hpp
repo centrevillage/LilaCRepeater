@@ -28,6 +28,7 @@ struct AppInputNormal {
   }
 
   bool button(AppBtnID id, bool on) {
+    return false;
   }
 
   bool slider(AppSliderID id, float value) {
@@ -59,6 +60,7 @@ struct AppInputNormal {
       default:
         break;
     }
+    return true;
   }
 };
 

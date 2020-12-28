@@ -3,7 +3,10 @@
 
 enum class AppViewModeId : uint8_t {
   normal = 0,
-  system
+  program,
+  system,
+  start,
+  firmware
 };
 
 #endif /* LR_APP_VIEW_BASE_H */

@@ -2,6 +2,7 @@
 #define LR_APP_ANALOGS_H
 
 #include "hardware.hpp"
+#include <functional>
 
 // Daisyのピン番号が0 originなのでハードウェアのGPIO番号-1で定義する
 #define SLIDER_DRY_VOL_PIN 22-1

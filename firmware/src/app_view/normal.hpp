@@ -18,42 +18,44 @@ struct AppViewNormal {
   void init() {
     app_oled.drawFillBG();
     app_oled.drawTextMedium("LilaC Repeater", 14, 3, 0);
-    app_oled.process();
     is_dirty = true;
+    app_oled.process();
   }
 
   void update() {
+    char text_buf[12];
+    app_oled.drawFillBG();
+
+    text_from_uint16(text_buf, fdbk);
+    app_oled.drawTextSmall(text_buf, 6, 2, 0);
+
+    text_from_uint16(text_buf, dry_vol);
+    app_oled.drawTextSmall(text_buf, 6, 3, 0);
+
+    text_from_uint16(text_buf, pos);
+    app_oled.drawTextSmall(text_buf, 6, 1, 42);
+
+    text_from_uint16(text_buf, length);
+    app_oled.drawTextSmall(text_buf, 6, 2, 42);
+
+    text_from_uint16(text_buf, pan);
+    app_oled.drawTextSmall(text_buf, 6, 3, 42);
+
+    text_from_uint16(text_buf, speed);
+    app_oled.drawTextSmall(text_buf, 6, 2, 84);
+
+    text_from_uint16(text_buf, wet_vol);
+    app_oled.drawTextSmall(text_buf, 6, 3, 84);
+
+    app_oled.process();
+  }
+
+  void process() {
     if (is_dirty) {
-      char text_buf[7];
-      app_oled.drawFillBG();
-
-      text_from_uint16(text_buf, fdbk);
-      app_oled.drawTextSmall(text_buf, 6, 2, 0);
-
-      text_from_uint16(text_buf, dry_vol);
-      app_oled.drawTextSmall(text_buf, 6, 3, 0);
-
-      text_from_uint16(text_buf, pos);
-      app_oled.drawTextSmall(text_buf, 6, 1, 42);
-
-      text_from_uint16(text_buf, length);
-      app_oled.drawTextSmall(text_buf, 6, 2, 42);
-
-      text_from_uint16(text_buf, pan);
-      app_oled.drawTextSmall(text_buf, 6, 3, 42);
-
-      text_from_uint16(text_buf, speed);
-      app_oled.drawTextSmall(text_buf, 6, 2, 84);
-
-      text_from_uint16(text_buf, wet_vol);
-      app_oled.drawTextSmall(text_buf, 6, 3, 84);
-
-      app_oled.process();
+      update();
       is_dirty = false;
     }
   }
-
-  void process() {}
 
   void setDryVol(uint16_t v) {
     dry_vol = v;

@@ -15,6 +15,9 @@
 #include "app_view/base.hpp"
 #include "app_view/normal.hpp"
 #include "app_view/system.hpp"
+#include "app_view/program.hpp"
+#include "app_view/start.hpp"
+#include "app_view/firmware.hpp"
 
 using namespace daisy;
 using namespace igb::stm32;
@@ -24,7 +27,10 @@ using namespace igb::daisy;
 struct AppViewModeState {
   std::variant<
     AppViewNormal,
-    AppViewSystem
+    AppViewProgram,
+    AppViewSystem,
+    AppViewStart,
+    AppViewFirmware
   > mode = AppViewNormal {};
 
   AppViewModeId currentMode() {
@@ -36,8 +42,17 @@ struct AppViewModeState {
       case AppViewModeId::normal:
         mode = AppViewNormal {};
         break;
+      case AppViewModeId::program:
+        mode = AppViewProgram {};
+        break;
       case AppViewModeId::system:
         mode = AppViewSystem {};
+        break;
+      case AppViewModeId::start:
+        mode = AppViewStart {};
+        break;
+      case AppViewModeId::firmware:
+        mode = AppViewFirmware {};
         break;
       default:
         break;

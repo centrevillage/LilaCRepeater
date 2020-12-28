@@ -8,10 +8,12 @@
 #include "app_input/base.hpp"
 #include "app_input/normal.hpp"
 #include "app_input/system.hpp"
+#include "app_input/program.hpp"
 
 struct AppInputModeState {
   std::variant<
     AppInputNormal,
+    AppInputProgram,
     AppInputSystem
   > mode = AppInputNormal {};
 
@@ -19,6 +21,9 @@ struct AppInputModeState {
     switch (m) {
       case AppInputModeId::normal:
         mode = AppInputNormal {};
+        break;
+      case AppInputModeId::program:
+        mode = AppInputProgram {};
         break;
       case AppInputModeId::system:
         mode = AppInputSystem {};

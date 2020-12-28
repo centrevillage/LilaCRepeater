@@ -42,7 +42,9 @@ struct AppButtons {
   ButtonSingle<GpioPin> rev_btn {
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p31))
   };
-  ButtonSingle<GpioPin, false> run_btn {
+  // TODO: テンプレートパラメータでbool値を渡した時の挙動が変？
+  //ButtonSingle<GpioPin, false> run_btn {
+  ButtonSingle<GpioPin> run_btn {
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p14))
   }; // pull down
   ButtonSingle<GpioPin> track1_btn {
