@@ -4,6 +4,7 @@
 #include <igb_sdk/util/text.h>
 #include "app_analogs.hpp"
 #include "app_oled.hpp"
+#include "looper.hpp"
 
 struct AppViewNormal {
   bool is_dirty = true;
@@ -46,6 +47,14 @@ struct AppViewNormal {
 
     text_from_uint16(text_buf, wet_vol);
     app_oled.drawTextSmall(text_buf, 6, 3, 84);
+
+    if (looper.is_rec) {
+      app_oled.drawTextMedium("REC", 3, 4, 0);
+    }
+
+    if (looper.is_run) {
+      app_oled.drawTextMedium("RUN", 3, 4, 84);
+    }
 
     app_oled.process();
   }

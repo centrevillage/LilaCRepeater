@@ -2,6 +2,8 @@
 #define LR_APP_VIEW_PROGRAM_H
 
 struct AppViewProgram {
+  bool is_dirty = true;
+
   void init() {
   }
 

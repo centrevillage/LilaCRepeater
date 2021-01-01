@@ -3,6 +3,8 @@
 
 // 起動時アニメーション用のビュークラス
 struct AppViewStart {
+  bool is_dirty = true;
+
   void init() {
   }
 

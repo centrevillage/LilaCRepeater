@@ -2,6 +2,7 @@
 #define LR_APP_INPUT_NORMAL_H
 
 #include "app_input/base.hpp"
+#include "looper.hpp"
 
 struct AppInputNormal {
   static inline uint16_t _to_uint16_t(float v) {
@@ -28,6 +29,17 @@ struct AppInputNormal {
   }
 
   bool button(AppBtnID id, bool on) {
+    switch (id) {
+      case AppBtnID::rec:
+        if (on) {
+          looper.rec();
+          view.dirty();
+        }
+        // TODO:
+        break;
+      default:
+        break;
+    }
     return false;
   }
 

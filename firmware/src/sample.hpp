@@ -3,13 +3,47 @@
 
 #include <cstddef>
 #include <cassert>
+#include <utility>
 
 //constexpr size_t sample_max_buffer_size = (48000 * 60 * 5) // 5 minutes of floats at 48 khz
 constexpr size_t sample_max_buffer_size = (1024 * 1024 * 64 / sizeof(float)); // 64MB
 
+// stereo をLRの連続領域として扱うとめんどいので、別Sliceにする？
 struct SampleSlice {
   size_t size;
   float* buf;
+  float _pos = 0.0f;
+  bool is_rec = false;
+  float step_value = 1.0f;
+  bool is_overrap = false;
+
+  void startRec() {
+    is_rec = true;
+  }
+
+  void endRec() {
+    is_rec = false;
+    size = _pos;
+    reset();
+  }
+
+  void reset() {
+    _pos = 0.0f;
+    is_overrap = false;
+  }
+
+  void step(float v) {
+    step_value = v;
+    volatile float tmp = _pos;
+    tmp += v;
+    if (tmp > (float)size) {
+      tmp -= size;
+      is_overrap = true;
+    } else {
+      is_overrap = false;
+    }
+    _pos = tmp;
+  }
 
   float get(float pos) {
     // linear interporation
@@ -18,43 +52,54 @@ struct SampleSlice {
     float a = pos - (float)spos;
     return (1.0f - a) * buf[spos] + a * buf[epos];
   }
+
+  float getCurrent() {
+    return get(_pos);
+  }
   
+  // このメソッドでは常にoverdub想定なので、上書きしたい場合は別途クリア
   void set(float pos, float value) {
-    buf[(size_t)pos] = value;
+    // TODO: これ正しいのか？
+    if (step_value > 1.0f) {
+      size_t spos = (size_t)pos;
+      // wrap した時の考慮
+      size_t epos = (size_t)(pos + step_value);
+      float a = pos - spos;
+      float b = (pos + step_value) - (float)epos;
+      buf[spos] += (1.0f - a) * value;
+      buf[epos % size] += b * value;
+      if (epos > spos + 1) {
+        size_t count = epos - (spos + 1);
+        // 飛ばされるサンプル分を埋める
+        for (size_t i = 0; i < count; ++i) {
+          buf[spos+1+i] += value;
+        }
+      }
+    } else if (step_value == 1.0f) {
+      buf[(size_t)pos] += value;
+    } else {
+      size_t spos = (size_t)pos;
+      size_t epos = (spos+1) % size;
+      float a = pos - (float)spos;
+      buf[spos] += (value * (1.0f - a)) / step_value;
+      buf[epos] += (value * a) / step_value;
+    }
   }
 
-  // get left value on stereo mode
-  float getL(float pos) {
-    assert(pos * 2 < size);
-    // linear interporation
-    size_t spos = (size_t)(2.0f * pos);
-    size_t epos = (spos+2) % size;
-    float a = pos - (float)((size_t)pos);
-    return (1.0f - a) * buf[spos] + a * buf[epos];
+  void setCurrent(float value) {
+    set(_pos, value);
   }
 
-  void setL(float pos, float value) {
-    buf[(size_t)pos*2] = value;
-  }
-  void setR(float pos, float value) {
-    buf[(size_t)pos*2+1] = value;
+  void clear(size_t pos) {
+    buf[pos] = 0.0f;
   }
 
-  // get right value on stereo mode
-  float getR(float pos) {
-    // linear interporation
-    size_t spos = (size_t)(2.0f * pos) + 1;
-    size_t epos = (spos+2) % size;
-    float a = pos - (float)((size_t)pos);
-    return (1.0f - a) * buf[spos] + a * buf[epos];
+  void setRow(size_t pos, float value) {
+    buf[pos] = value;
   }
 
   float getRow(size_t pos) {
     return buf[pos];
-  }
-
-  inline float sizeStereo() {
-    return size / 2;
   }
 
   SampleSlice slice(size_t start, size_t size) {

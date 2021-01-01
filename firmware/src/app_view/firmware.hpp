@@ -3,6 +3,8 @@
 
 // ファームウェアアップデート用のビュークラス
 struct AppViewFirmware {
+  bool is_dirty = true;
+
   void init() {
   }
 

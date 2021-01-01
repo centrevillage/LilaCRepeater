@@ -13,8 +13,6 @@ using namespace igb::stm32;
 struct LooperTrack {
   // 連続したRAM領域の一部を参照するバッファ
   SampleSlice slice;
-  float pos = 0.0f;
-  bool overdub = true;
 
   // TODO: ループサイズ可変
   void init() {
@@ -23,12 +21,7 @@ struct LooperTrack {
 
   // 1 sample tickごとのサンプルテープ進行量
   void step(float v) {
-    volatile float tmp = pos;
-    tmp += v;
-    if (tmp > slice.sizeStereo()) {
-      tmp -= slice.sizeStereo();
-    }
-    pos = tmp;
+    slice.step(v);
   }
 };
 
@@ -50,26 +43,30 @@ struct Looper {
 
   std::array<LooperTrack, track_size> tracks;
   uint8_t current_track_idx = 0;
-  bool run = false;
+  bool is_run = false;
   bool is_rec = false;
   float bpm = default_bpm;
   uint32_t tim_period = calc_tim_period(default_bpm);
   Tim tim; // 32bit timer
 
   void init() {
+    sample.init();
     tim = Tim::newIntervalTimer(TIM_LOOPER_CLOCK_TYPE, 0, tim_period, 0);
     tim.setCount(0);
+    for (auto& track : tracks) {
+      track.init();
+    }
   }
 
   void start() {
     tim.setCount(0);
     tim.enable();
-    run = true;
+    is_run = true;
   }
 
   void stop() {
     tim.disable();
-    run = false;
+    is_run = false;
   }
 
   // モードによって挙動が変わる。
@@ -78,10 +75,20 @@ struct Looper {
   //  レコーディング済みの場合、Overdub開始/停止
   void rec() {
     // TODO: quantize
+
+    // とりあえずテストで録音始めたら自動でRunするようにしとく
     if (is_rec) {
       is_rec = false;
+      tracks[current_track_idx].slice.endRec();
+      //if (is_run) {
+      //  stop();
+      //}
     } else {
       is_rec = true;
+      if (!is_run) {
+        start();
+        tracks[current_track_idx].slice.startRec();
+      }
     }
   }
 
@@ -103,7 +110,7 @@ struct Looper {
   }
 
   void processAudio(float *in, float *out, size_t size) {
-    if (!run) {
+    if (!is_run) {
       // TODO: dry volume
       // dry thru
       for(size_t i = 0; i < size; i += 2) {
@@ -114,7 +121,26 @@ struct Looper {
       }
       return;
     }
+
     if (is_rec) {
+      for(size_t i = 0; i < size; i += 2) {
+        tracks[current_track_idx].slice.step(1.0f);
+        if (tracks[current_track_idx].slice.is_overrap) {
+          // 1ループ録音完了
+          is_rec = false;
+          tracks[current_track_idx].slice.endRec();
+        } else {
+          tracks[current_track_idx].slice.setCurrent(in[i]);
+        }
+        out[i] = 0.5 * in[i] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+        out[i+1] = 0.5 * in[i + 1] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+      }
+    } else {
+      for(size_t i = 0; i < size; i += 2) {
+        tracks[current_track_idx].slice.step(1.0f);
+        out[i] = 0.5 * in[i] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+        out[i+1] = 0.5 * in[i + 1] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+      }
     }
   }
 };
