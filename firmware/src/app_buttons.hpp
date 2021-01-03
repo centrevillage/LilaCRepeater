@@ -28,7 +28,29 @@ enum class AppBtnID : uint8_t {
 struct AppButtons {
   uint16_t state_bits = 0;
   std::function<void(AppBtnID, bool)> on_change;
+  
+// hardware version 0.2 ~
+#if 1
+  ButtonSingle<GpioPin> mute_btn {
+    GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p25))
+  };
 
+  ButtonMatrix<GpioPin, 4, GpioPin, 2> btn_matrix {
+    .in_pins = {
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p28)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p29)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p30)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p31))
+    },
+    .out_pins = {
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p26)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p27))
+    }
+  };
+#endif
+
+// hardware version 0.1
+#if 0
   // TODO: button matrix (fix hardware)
   ButtonSingle<GpioPin> mute_btn {
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p25))
@@ -59,8 +81,27 @@ struct AppButtons {
   ButtonSingle<GpioPin> track4_btn {
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p30))
   };
+#endif
 
   void init() {
+// hardware version 0.2 ~
+#if 1
+    mute_btn.pin.enable();
+    mute_btn.pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
+
+    for (auto& in_pin : btn_matrix.in_pins) {
+      in_pin.enable();
+      in_pin.initInput(GpioPullMode::NO, GpioSpeedMode::HIGH);
+    }
+    for (auto& out_pin : btn_matrix.out_pins) {
+      out_pin.enable();
+      out_pin.initOutput(GpioOutputMode::PUSHPULL, GpioSpeedMode::HIGH);
+    }
+    btn_matrix.init();
+#endif
+
+// hardware version 0.1
+#if 0
     mute_btn.pin.enable();
     mute_btn.pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
 
@@ -87,12 +128,53 @@ struct AppButtons {
 
     track4_btn.pin.enable();
     track4_btn.pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
+#endif
   }
 
   bool isOn(AppBtnID btn_id) {
     bool on = false;
 
+// hardware version 0.2 ~
+#if 1
     switch (btn_id) {
+      case AppBtnID::mute:
+        on = mute_btn.isOn();
+        break;
+      case AppBtnID::track1:
+        on = btn_matrix.isOn(0, 0);
+        break;
+      case AppBtnID::track2:
+        on = btn_matrix.isOn(1, 0);
+        break;
+      case AppBtnID::track3:
+        on = btn_matrix.isOn(2, 0);
+        break;
+      case AppBtnID::track4:
+        on = btn_matrix.isOn(3, 0);
+        break;
+      case AppBtnID::rec:
+        on = btn_matrix.isOn(0, 0);
+        break;
+      case AppBtnID::clear:
+        on = btn_matrix.isOn(0, 1);
+        break;
+      case AppBtnID::rev:
+        on = btn_matrix.isOn(0, 2);
+        break;
+      case AppBtnID::run:
+        on = btn_matrix.isOn(0, 3);
+        break;
+      default:
+        break;
+    }
+#endif
+
+// hardware version 0.1
+#if 0
+    switch (btn_id) {
+      case AppBtnID::mute:
+        on = mute_btn.isOn();
+        break;
       case AppBtnID::track1:
         on = track1_btn.isOn();
         break;
@@ -104,9 +186,6 @@ struct AppButtons {
         break;
       case AppBtnID::track4:
         on = track4_btn.isOn();
-        break;
-      case AppBtnID::mute:
-        on = mute_btn.isOn();
         break;
       case AppBtnID::rec:
         on = rec_btn.isOn();
@@ -123,11 +202,20 @@ struct AppButtons {
       default:
         break;
     }
+#endif
 
     return on;
   }
 
   bool process() {
+// hardware version 0.2 ~
+#if 1
+    mute_btn.process();
+    btn_matrix.process();
+#endif
+
+// hardware version 0.1
+#if 0
     track1_btn.process();
     track2_btn.process();
     track3_btn.process();
@@ -137,6 +225,7 @@ struct AppButtons {
     clear_btn.process();
     rev_btn.process();
     run_btn.process();
+#endif
 
     uint16_t new_bits = 0;
     for (uint8_t i = 0; i < static_cast<uint8_t>(AppBtnID::size); ++i) {
