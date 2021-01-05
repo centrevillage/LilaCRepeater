@@ -9,6 +9,54 @@ struct AppInputNormal {
     return (uint16_t)(v * 1023.9999f);
   }
 
+  static inline uint8_t _to_uint8_t(float v) {
+    return (uint8_t)(v * 127.9999f);
+  }
+
+  static inline float _to_speed_value(float v) {
+    static const float speed_table[25] = {
+// ruby:
+// scales = (0..12).map {|i| 2.0**(i.to_f/12.0)}
+// scales.each do |scale|
+//   print <<-EOS
+//       #{0.5*scale},
+//   EOS
+// end
+// scales[1..-1].each do |scale|
+//   print <<-EOS
+//       #{1.0*scale},
+//   EOS
+// end
+      0.5,
+      0.5297315471796477,
+      0.5612310241546865,
+      0.5946035575013605,
+      0.6299605249474366,
+      0.6674199270850172,
+      0.7071067811865476,
+      0.7491535384383408,
+      0.7937005259840997,
+      0.8408964152537145,
+      0.8908987181403393,
+      0.9438743126816934,
+      1.0,
+      1.0594630943592953,
+      1.122462048309373,
+      1.189207115002721,
+      1.2599210498948732,
+      1.3348398541700344,
+      1.4142135623730951,
+      1.4983070768766815,
+      1.5874010519681994,
+      1.681792830507429,
+      1.7817974362806785,
+      1.8877486253633868,
+      2.0,
+    };
+    uint8_t idx = (uint8_t)(v * 24.9999f);
+    return speed_table[idx];
+  }
+
   void init() {
     view.changeMode(AppViewNormal {});
   }
@@ -17,13 +65,10 @@ struct AppInputNormal {
     if (!view.isMode<AppViewNormal>()) { return; }
     auto& view_mode = view.getMode<AppViewNormal>();
 
-    view_mode.setDryVol(_to_uint16_t(analogs.value(AppSliderID::dry)));
-    view_mode.setWetVol(_to_uint16_t(analogs.value(AppSliderID::wet)));
-    view_mode.setPan(_to_uint16_t(analogs.value(AppSliderID::pan)));
-    view_mode.setLength(_to_uint16_t(analogs.value(AppSliderID::length)));
-    view_mode.setPos(_to_uint16_t(analogs.value(AppSliderID::pos)));
-    view_mode.setFdbk(_to_uint16_t(analogs.value(AppSliderID::fdbk)));
-    view_mode.setSpeed(_to_uint16_t(analogs.value(AppSliderID::speed)));
+    for (uint8_t i = 0; i < slider_count; ++i) {
+      AppSliderID id = static_cast<AppSliderID>(i);
+      slider(id, analogs.value(id));
+    }
 
     view.update();
   }
@@ -46,28 +91,38 @@ struct AppInputNormal {
   bool slider(AppSliderID id, float value) {
     if (!view.isMode<AppViewNormal>()) { return false; }
     auto& view_mode = view.getMode<AppViewNormal>();
-    uint16_t v = _to_uint16_t(value);
     switch (id) {
       case AppSliderID::dry:
-        view_mode.setDryVol(v);
+        view_mode.setDryVol(value);
+        looper.dry_vol = value;
         break;
       case AppSliderID::wet:
-        view_mode.setWetVol(v);
+        view_mode.setWetVol(value);
+        looper.wet_vol = value;
         break;
       case AppSliderID::pan:
-        view_mode.setPan(v);
+        view_mode.setPan(value);
+        looper.pan = value;
         break;
       case AppSliderID::length:
-        view_mode.setLength(v);
+        if (!looper.is_rec) {
+          view_mode.setLength(_to_uint8_t(value));
+          looper.length = _to_uint8_t(value);
+        }
         break;
       case AppSliderID::pos:
-        view_mode.setPos(v);
+        if (!looper.is_rec) {
+          view_mode.setPos(_to_uint8_t(value));
+          looper.pos = _to_uint8_t(value);
+        }
         break;
       case AppSliderID::fdbk:
-        view_mode.setFdbk(v);
+        view_mode.setFdbk(value);
+        looper.fdbk = value;
         break;
       case AppSliderID::speed:
-        view_mode.setSpeed(v);
+        view_mode.setSpeed(_to_speed_value(value));
+        looper.speed = _to_speed_value(value);
         break;
       default:
         break;

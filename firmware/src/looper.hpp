@@ -40,14 +40,23 @@ constexpr uint32_t calc_tim_period(float _bpm) {
  * ルーパーへの操作を行う。
  */
 struct Looper {
+  float dry_vol = 1.0f;
+  float wet_vol = 1.0f;
+  float pan = 0.5f;
+  float fdbk = 1.0f;
+  uint8_t pos = 0;
+  uint8_t length = 127;
+  float speed = 1.0f;
 
   std::array<LooperTrack, track_size> tracks;
   uint8_t current_track_idx = 0;
+  uint8_t fdbk_sources = 0;
   bool is_run = false;
   bool is_rec = false;
   float bpm = default_bpm;
   uint32_t tim_period = calc_tim_period(default_bpm);
   Tim tim; // 32bit timer
+
 
   void init() {
     sample.init();
@@ -130,16 +139,16 @@ struct Looper {
           is_rec = false;
           tracks[current_track_idx].slice.endRec();
         } else {
-          tracks[current_track_idx].slice.setCurrent(in[i]);
+          tracks[current_track_idx].slice.setCurrent(dry_vol * in[i] + fdbk * tracks[current_track_idx].slice.getCurrent());
         }
-        out[i] = 0.5 * in[i] + 0.5 * tracks[current_track_idx].slice.getCurrent();
-        out[i+1] = 0.5 * in[i + 1] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+        out[i] = dry_vol * in[i] + wet_vol * tracks[current_track_idx].slice.getCurrent();
+        out[i+1] = dry_vol * in[i + 1] + wet_vol * tracks[current_track_idx].slice.getCurrent();
       }
     } else {
       for(size_t i = 0; i < size; i += 2) {
         tracks[current_track_idx].slice.step(1.0f);
-        out[i] = 0.5 * in[i] + 0.5 * tracks[current_track_idx].slice.getCurrent();
-        out[i+1] = 0.5 * in[i + 1] + 0.5 * tracks[current_track_idx].slice.getCurrent();
+        out[i] = dry_vol * in[i] + wet_vol * tracks[current_track_idx].slice.getCurrent();
+        out[i+1] = dry_vol * in[i + 1] + wet_vol * tracks[current_track_idx].slice.getCurrent();
       }
     }
   }

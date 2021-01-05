@@ -49,7 +49,7 @@ struct AppAnalogs {
     bool is_dirty = false;
     for (uint8_t i = 0; i < slider_count; ++i) {
       // TODO: LPFかけて読み出すべき？
-      float value = hardware.adc.GetFloat(i);
+      float value = 1.0f - hardware.adc.GetFloat(i);
       if (slider_values[i] != value) {
         slider_values[i] = value;
         if (on_change) {
