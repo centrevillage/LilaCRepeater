@@ -12,16 +12,43 @@ using namespace igb::stm32;
 
 struct LooperTrack {
   // 連続したRAM領域の一部を参照するバッファ
-  SampleSlice slice;
+  std::array<SampleSlice, 2> slices;
 
   // TODO: ループサイズ可変
-  void init() {
-    slice = sample.slice(0, sample_max_buffer_size / 4);
+  void init(uint8_t track_idx) {
+    slices[0] = sample.slice(
+        sample_max_buffer_size / 4 * track_idx, sample_max_buffer_size / 8);
+    slices[1] = sample.slice(
+        sample_max_buffer_size / 4 * track_idx + sample_max_buffer_size / 8, sample_max_buffer_size / 8);
   }
 
   // 1 sample tickごとのサンプルテープ進行量
   void step(float v) {
-    slice.step(v);
+    slices[0].step(v);
+    slices[1].step(v);
+  }
+
+  void startRec() {
+    slices[0].startRec();
+    slices[1].startRec();
+  }
+
+  void endRec() {
+    slices[0].endRec();
+    slices[1].endRec();
+  }
+
+  bool isOverrap() {
+    return slices[0].is_overrap;
+  }
+
+  void setCurrent(float left, float right) {
+    slices[0].setCurrent(left);
+    slices[1].setCurrent(right);
+  }
+
+  std::pair<float, float> getCurrent() {
+    return std::make_pair(slices[0].getCurrent(), slices[1].getCurrent());
   }
 };
 
@@ -53,17 +80,23 @@ struct Looper {
   uint8_t fdbk_sources = 0;
   bool is_run = false;
   bool is_rec = false;
+  bool is_ext_sync = false;
   float bpm = default_bpm;
   uint32_t tim_period = calc_tim_period(default_bpm);
+  float recorded_speed = 1.0f; // 録音時のベーススピード
+  bool is_quantized_rec = false;
   Tim tim; // 32bit timer
 
+  LooperTrack& currentTrack() {
+    return tracks[current_track_idx];
+  }
 
   void init() {
     sample.init();
     tim = Tim::newIntervalTimer(TIM_LOOPER_CLOCK_TYPE, 0, tim_period, 0);
     tim.setCount(0);
-    for (auto& track : tracks) {
-      track.init();
+    for (uint8_t i = 0; i < track_size; ++i) {
+      tracks[i].init(i);
     }
   }
 
@@ -78,26 +111,36 @@ struct Looper {
     is_run = false;
   }
 
-  // モードによって挙動が変わる。
-  // default:
-  //  何もレコーディングされていない場合、Track1にレコーディング開始と内部クロックのSTART
-  //  レコーディング済みの場合、Overdub開始/停止
-  void rec() {
-    // TODO: quantize
-
-    // とりあえずテストで録音始めたら自動でRunするようにしとく
+  void toggleRec() {
     if (is_rec) {
-      is_rec = false;
-      tracks[current_track_idx].slice.endRec();
-      //if (is_run) {
-      //  stop();
-      //}
+      stopRec();
     } else {
+      rec();
+    }
+  }
+
+  void rec() {
+    if (!is_run) {
       is_rec = true;
-      if (!is_run) {
-        start();
-        tracks[current_track_idx].slice.startRec();
+      recorded_speed = speed;
+      if (is_ext_sync) {
+        is_quantized_rec = true;
       }
+      reset();
+      start();
+      tracks[current_track_idx].startRec();
+    }
+  }
+
+  void stopRec() {
+    // TODO:
+    is_rec = false;
+    tracks[current_track_idx].endRec();
+  }
+
+  void reset() {
+    if (is_rec) {
+      stopRec();
     }
   }
 
@@ -131,24 +174,28 @@ struct Looper {
       return;
     }
 
+    auto current_values = tracks[current_track_idx].getCurrent();
     if (is_rec) {
       for(size_t i = 0; i < size; i += 2) {
-        tracks[current_track_idx].slice.step(1.0f);
-        if (tracks[current_track_idx].slice.is_overrap) {
-          // 1ループ録音完了
+        tracks[current_track_idx].step(1.0f);
+        if (tracks[current_track_idx].isOverrap()) {
+          // RAMの空きがなくなった
           is_rec = false;
-          tracks[current_track_idx].slice.endRec();
+          tracks[current_track_idx].endRec();
         } else {
-          tracks[current_track_idx].slice.setCurrent(dry_vol * in[i] + fdbk * tracks[current_track_idx].slice.getCurrent());
+          tracks[current_track_idx].setCurrent(
+              dry_vol * in[i] + fdbk * current_values.first,
+              dry_vol * in[i+1] + fdbk * current_values.second
+              );
         }
-        out[i] = dry_vol * in[i] + wet_vol * tracks[current_track_idx].slice.getCurrent();
-        out[i+1] = dry_vol * in[i + 1] + wet_vol * tracks[current_track_idx].slice.getCurrent();
+        out[i] = dry_vol * in[i] + wet_vol * current_values.first;
+        out[i+1] = dry_vol * in[i + 1] + wet_vol * current_values.second;
       }
     } else {
       for(size_t i = 0; i < size; i += 2) {
-        tracks[current_track_idx].slice.step(1.0f);
-        out[i] = dry_vol * in[i] + wet_vol * tracks[current_track_idx].slice.getCurrent();
-        out[i+1] = dry_vol * in[i + 1] + wet_vol * tracks[current_track_idx].slice.getCurrent();
+        tracks[current_track_idx].step(1.0f);
+        out[i] = dry_vol * in[i] + wet_vol * current_values.first;
+        out[i+1] = dry_vol * in[i + 1] + wet_vol * current_values.second;
       }
     }
   }

@@ -77,10 +77,25 @@ struct AppInputNormal {
     switch (id) {
       case AppBtnID::rec:
         if (on) {
-          looper.rec();
+          looper.toggleRec();
           view.dirty();
         }
         // TODO:
+        break;
+      case AppBtnID::run:
+        if (on) {
+          if (looper.is_rec) {
+            // TODO: どういう挙動にすべきか検討
+          } else {
+            if (looper.is_run) {
+              looper.start();
+              view.dirty();
+            } else {
+              looper.stop();
+              view.dirty();
+            }
+          }
+        }
         break;
       default:
         break;
