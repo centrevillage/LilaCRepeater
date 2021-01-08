@@ -1,2 +1,2 @@
-# dooper
-Loop / Glitch FX Eurorack module driven by Daisy
+# LilaCRepeater
+Eurorack sample looping module driven by Daisy (https://www.electro-smith.com/daisy)
