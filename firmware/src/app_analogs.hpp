@@ -24,6 +24,8 @@ enum class AppSliderID : uint8_t {
 };
 constexpr size_t slider_count = 7;
 
+constexpr float slider_value_border_threshold = 0.001;
+
 struct AppAnalogs {
 
   float slider_values[slider_count];
@@ -50,6 +52,12 @@ struct AppAnalogs {
     for (uint8_t i = 0; i < slider_count; ++i) {
       // TODO: LPFかけて読み出すべき？
       float value = 1.0f - hardware.adc.GetFloat(i);
+      // 端っこまでちゃんと値が動く様に閾値を設定
+      if (value > 1.0f - slider_value_border_threshold) {
+        value = 1.0f;
+      } else if (value < slider_value_border_threshold) {
+        value = 0.0f;
+      }
       if (slider_values[i] != value) {
         slider_values[i] = value;
         if (on_change) {

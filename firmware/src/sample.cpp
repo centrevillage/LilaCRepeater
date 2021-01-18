@@ -9,7 +9,7 @@ void Sample::init() {
   }
 }
 
-SampleSlice Sample::slice(size_t start, size_t size) {
+SampleSlice Sample::slice(size_t start, size_t size) const {
   return SampleSlice {
     .size = size,
     .buf = _buffer + start

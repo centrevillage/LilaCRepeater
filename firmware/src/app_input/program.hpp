@@ -13,7 +13,7 @@ struct AppInputProgram {
     view.update();
   }
 
-  bool button(AppBtnID id, bool on) {
+  bool button(AppBtnId id, bool on) {
     return false;
   }
 

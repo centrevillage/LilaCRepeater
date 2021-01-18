@@ -1,10 +1,15 @@
 #ifndef LR_APP_INPUT_NORMAL_H
 #define LR_APP_INPUT_NORMAL_H
 
+#include <algorithm>
+
 #include "app_input/base.hpp"
 #include "looper.hpp"
 
 struct AppInputNormal {
+  bool is_rescale_length = false;
+  bool is_rescale_pos = false;
+
   static inline uint16_t _to_uint16_t(float v) {
     return (uint16_t)(v * 1023.9999f);
   }
@@ -73,16 +78,16 @@ struct AppInputNormal {
     view.update();
   }
 
-  bool button(AppBtnID id, bool on) {
+  bool button(AppBtnId id, bool on) {
     switch (id) {
-      case AppBtnID::rec:
+      case AppBtnId::rec:
         if (on) {
           looper.toggleRec();
           view.dirty();
         }
         // TODO:
         break;
-      case AppBtnID::run:
+      case AppBtnId::run:
         if (on) {
           if (looper.is_rec) {
             // TODO: どういう挙動にすべきか検討
@@ -120,15 +125,40 @@ struct AppInputNormal {
         looper.pan = value;
         break;
       case AppSliderID::length:
+        // TODO: 
+        // length と pos は即座に値を反映するのでなくて、ステップの境界で反映する必要がある
+        // でないと、ループの位相がずれた状態になってしまう
         if (!looper.is_rec) {
-          view_mode.setLength(_to_uint8_t(value));
-          looper.length = _to_uint8_t(value);
+          uint8_t v = _to_uint8_t(value);
+          if (!looper.is_empty && v == 127) {
+            is_rescale_length = true;
+          }
+          if (looper.is_empty) {
+            is_rescale_length = false;
+          }
+          if (is_rescale_length) {
+            v = (uint8_t)(value * (looper.recorded_length + 0.9999f));
+          }
+          uint8_t len = std::min(looper.recorded_length, v);
+          view_mode.setLength(len);
+          looper.length = len;
         }
         break;
       case AppSliderID::pos:
         if (!looper.is_rec) {
-          view_mode.setPos(_to_uint8_t(value));
-          looper.pos = _to_uint8_t(value);
+          uint8_t v = _to_uint8_t(value);
+          if (!looper.is_empty && v == 127) {
+            is_rescale_pos = true;
+          }
+          if (looper.is_empty) {
+            is_rescale_pos = false;
+          }
+          if (is_rescale_length) {
+            v = (uint8_t)(value * (looper.recorded_length + 0.9999f));
+          }
+          uint8_t pos = std::min(looper.recorded_length, v);
+          view_mode.setPos(pos);
+          looper.pos = pos;
         }
         break;
       case AppSliderID::fdbk:

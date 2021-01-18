@@ -78,6 +78,12 @@ struct AppViewModeState {
     }, mode);
   }
 
+  bool isDirty() {
+    return std::visit([](auto& m) {
+      return m.is_dirty;
+    }, mode);
+  }
+
   void process() {
     std::visit([](auto& m) {
       m.process();

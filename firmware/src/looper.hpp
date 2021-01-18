@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cassert>
+#include <functional>
 
 #include "timer_conf.h"
 #include "sample.hpp"
@@ -15,40 +16,78 @@ struct LooperTrack {
   std::array<SampleSlice, 2> slices;
 
   // TODO: ループサイズ可変
-  void init(uint8_t track_idx) {
+  inline void init(uint8_t track_idx) {
     slices[0] = sample.slice(
         sample_max_buffer_size / 4 * track_idx, sample_max_buffer_size / 8);
     slices[1] = sample.slice(
         sample_max_buffer_size / 4 * track_idx + sample_max_buffer_size / 8, sample_max_buffer_size / 8);
   }
 
+  inline float getPos() const {
+    return slices[0].getPos();
+  }
+
+  inline void initStepValue(float step) {
+    slices[0].initStepValue(step);
+    slices[1].initStepValue(step);
+  }
+
   // 1 sample tickごとのサンプルテープ進行量
-  void step(float v) {
+  inline void step(float v) {
     slices[0].step(v);
     slices[1].step(v);
   }
 
-  void startRec() {
+  inline void jump(float pos) {
+    slices[0].jump(pos);
+    slices[1].jump(pos);
+  }
+
+  inline void setFeedback(float fb) {
+    slices[0].setFeedback(fb);
+    slices[1].setFeedback(fb);
+  }
+
+  inline void reset() {
+    slices[0].reset();
+    slices[1].reset();
+  }
+
+  inline void startRec() {
     slices[0].startRec();
     slices[1].startRec();
   }
 
-  void endRec() {
+  inline void endRec() {
     slices[0].endRec();
     slices[1].endRec();
   }
 
-  bool isOverrap() {
-    return slices[0].is_overrap;
+  inline void enableLoop() {
+    slices[0].loop_range_enabled = true;
+    slices[1].loop_range_enabled = true;
   }
 
-  void setCurrent(float left, float right) {
+  inline bool isOverrapBySize() const {
+    return slices[0].overrap == SampleSlice::OverrapType::by_size;
+  }
+
+  inline bool isOverrapByEnd() const {
+    return slices[0].overrap == SampleSlice::OverrapType::by_end;
+  }
+
+  inline void setCurrent(float left, float right) {
     slices[0].setCurrent(left);
     slices[1].setCurrent(right);
   }
 
-  std::pair<float, float> getCurrent() {
+  inline std::pair<float, float> getCurrent() const {
     return std::make_pair(slices[0].getCurrent(), slices[1].getCurrent());
+  }
+
+  inline void recValueAndStep(float step_, float left, float right) {
+    slices[0].recValueAndStep(step_, left);
+    slices[1].recValueAndStep(step_, right);
   }
 };
 
@@ -62,6 +101,11 @@ constexpr float beat_per_tick = 4.0; // 16分音符が最小単位
 constexpr uint32_t calc_tim_period(float _bpm) {
   return (tim_clock / (_bpm / 60.0f)) / beat_per_tick;
 }
+
+enum class LooperErrorType {
+  none = 0,
+  ram_full
+};
 
 /*
  * ルーパーへの操作を行う。
@@ -80,12 +124,15 @@ struct Looper {
   uint8_t fdbk_sources = 0;
   bool is_run = false;
   bool is_rec = false;
+  bool is_empty = true;
   bool is_ext_sync = false;
   float bpm = default_bpm;
   uint32_t tim_period = calc_tim_period(default_bpm);
+  uint8_t recorded_length = 127;
   float recorded_speed = 1.0f; // 録音時のベーススピード
   bool is_quantized_rec = false;
   Tim tim; // 32bit timer
+  std::function<void(LooperErrorType, uint8_t)> on_error;
 
   LooperTrack& currentTrack() {
     return tracks[current_track_idx];
@@ -101,14 +148,26 @@ struct Looper {
   }
 
   void start() {
-    tim.setCount(0);
-    tim.enable();
-    is_run = true;
+    if (!is_empty && !is_run) {
+      tim.setCount(0);
+      tim.enable();
+      is_run = true;
+    }
   }
 
   void stop() {
-    tim.disable();
-    is_run = false;
+    if (is_run) {
+      tim.disable();
+      is_run = false;
+    }
+  }
+
+  void toggleRun() {
+    if (is_run) {
+      stop();
+    } else {
+      start();
+    }
   }
 
   void toggleRec() {
@@ -122,26 +181,40 @@ struct Looper {
   void rec() {
     if (!is_run) {
       is_rec = true;
-      recorded_speed = speed;
       if (is_ext_sync) {
         is_quantized_rec = true;
       }
-      reset();
+      if (is_empty) {
+        recorded_speed = speed;
+        reset();
+      }
       start();
-      tracks[current_track_idx].startRec();
+      currentTrack().initStepValue(speed);
+      currentTrack().startRec();
     }
   }
 
   void stopRec() {
-    // TODO:
+    currentTrack().endRec();
+    if (is_empty) {
+      updateBpm(_calcBpmFromLength());
+      recorded_length = length;
+      currentTrack().enableLoop();
+      is_empty = false;
+    }
     is_rec = false;
-    tracks[current_track_idx].endRec();
+  }
+
+  void abortRec() {
+    is_rec = false;
+    currentTrack().reset();
   }
 
   void reset() {
     if (is_rec) {
       stopRec();
     }
+    currentTrack().reset(); 
   }
 
   void selectTrack(uint8_t track_idx) {
@@ -174,30 +247,62 @@ struct Looper {
       return;
     }
 
-    auto current_values = tracks[current_track_idx].getCurrent();
+    // simple panning (variable amp)
+    float pan_vol_l = 1.0f;
+    float pan_vol_r = 1.0f;
+    if (pan < 0.5f) {
+      pan_vol_r = 1.0f - (0.5f - pan) * 2.0f;
+    } else if (pan > 0.5f) {
+      pan_vol_l = 1.0f - (pan - 0.5f) * 2.0f;
+    }
+
+    currentTrack().setFeedback(fdbk);
+
     if (is_rec) {
-      for(size_t i = 0; i < size; i += 2) {
-        tracks[current_track_idx].step(1.0f);
-        if (tracks[current_track_idx].isOverrap()) {
+      for (size_t i = 0; i < size; i += 2) {
+        if (currentTrack().isOverrapBySize()) {
           // RAMの空きがなくなった
-          is_rec = false;
-          tracks[current_track_idx].endRec();
-        } else {
-          tracks[current_track_idx].setCurrent(
-              dry_vol * in[i] + fdbk * current_values.first,
-              dry_vol * in[i+1] + fdbk * current_values.second
-              );
+          abortRec();
+          if (on_error) {
+            on_error(LooperErrorType::ram_full, current_track_idx);
+          }
+          break;
         }
-        out[i] = dry_vol * in[i] + wet_vol * current_values.first;
-        out[i+1] = dry_vol * in[i + 1] + wet_vol * current_values.second;
+        float dry_l = dry_vol * pan_vol_l * in[i];
+        float dry_r = dry_vol * pan_vol_r * in[i+1];
+        auto current_values = currentTrack().getCurrent();
+        out[i] = dry_l + wet_vol * current_values.first;
+        out[i+1] = dry_r + wet_vol * current_values.second;
+        currentTrack().recValueAndStep(speed, dry_l, dry_r);
       }
     } else {
       for(size_t i = 0; i < size; i += 2) {
-        tracks[current_track_idx].step(1.0f);
-        out[i] = dry_vol * in[i] + wet_vol * current_values.first;
-        out[i+1] = dry_vol * in[i + 1] + wet_vol * current_values.second;
+        auto current_values = currentTrack().getCurrent();
+        float dry_l = dry_vol * pan_vol_l * in[i];
+        float dry_r = dry_vol * pan_vol_r * in[i+1];
+        out[i] = dry_l + wet_vol * current_values.first;
+        out[i+1] = dry_r + wet_vol * current_values.second;
+        currentTrack().step(speed);
       }
     }
+  }
+
+  inline float samplePos() {
+    return (float)pos * sampleByStep();
+  }
+
+  inline float sampleByStep() {
+    float bps = bpm / 60.0f;
+    float sps = bps * 4.0f; // step per second
+    return sample_rate * sps;
+  }
+
+  float _calcBpmFromLength() {
+    float recEndPos = currentTrack().getPos();
+    float recordedSec = recEndPos / 48000.0f;
+    float recordedSteps = (float)(length+1);
+    float bps = recordedSec / recordedSteps * 4.0f;
+    return bps * 60.0f * recorded_speed;
   }
 };
 

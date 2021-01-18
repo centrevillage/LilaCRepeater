@@ -11,7 +11,7 @@ using namespace igb::stm32;
 using namespace igb::sdk;
 using namespace igb::daisy;
 
-enum class AppBtnID : uint8_t {
+enum class AppBtnId : uint8_t {
   track1 = 0,
   track2,
   track3,
@@ -27,7 +27,7 @@ enum class AppBtnID : uint8_t {
 
 struct AppButtons {
   uint16_t state_bits = 0;
-  std::function<void(AppBtnID, bool)> on_change;
+  std::function<void(AppBtnId, bool)> on_change;
   
 // hardware version 0.2 ~
 #if 1
@@ -131,37 +131,37 @@ struct AppButtons {
 #endif
   }
 
-  bool isOn(AppBtnID btn_id) {
+  bool isOn(AppBtnId btn_id) {
     bool on = false;
 
 // hardware version 0.2 ~
 #if 1
     switch (btn_id) {
-      case AppBtnID::mute:
+      case AppBtnId::mute:
         on = mute_btn.isOn();
         break;
-      case AppBtnID::track1:
+      case AppBtnId::track1:
         on = btn_matrix.isOn(0, 0);
         break;
-      case AppBtnID::track2:
+      case AppBtnId::track2:
         on = btn_matrix.isOn(1, 0);
         break;
-      case AppBtnID::track3:
+      case AppBtnId::track3:
         on = btn_matrix.isOn(2, 0);
         break;
-      case AppBtnID::track4:
+      case AppBtnId::track4:
         on = btn_matrix.isOn(3, 0);
         break;
-      case AppBtnID::rec:
+      case AppBtnId::rec:
         on = btn_matrix.isOn(0, 0);
         break;
-      case AppBtnID::clear:
+      case AppBtnId::clear:
         on = btn_matrix.isOn(0, 1);
         break;
-      case AppBtnID::rev:
+      case AppBtnId::rev:
         on = btn_matrix.isOn(0, 2);
         break;
-      case AppBtnID::run:
+      case AppBtnId::run:
         on = btn_matrix.isOn(0, 3);
         break;
       default:
@@ -172,31 +172,31 @@ struct AppButtons {
 // hardware version 0.1
 #if 0
     switch (btn_id) {
-      case AppBtnID::mute:
+      case AppBtnId::mute:
         on = mute_btn.isOn();
         break;
-      case AppBtnID::track1:
+      case AppBtnId::track1:
         on = track1_btn.isOn();
         break;
-      case AppBtnID::track2:
+      case AppBtnId::track2:
         on = track2_btn.isOn();
         break;
-      case AppBtnID::track3:
+      case AppBtnId::track3:
         on = track3_btn.isOn();
         break;
-      case AppBtnID::track4:
+      case AppBtnId::track4:
         on = track4_btn.isOn();
         break;
-      case AppBtnID::rec:
+      case AppBtnId::rec:
         on = rec_btn.isOn();
         break;
-      case AppBtnID::clear:
+      case AppBtnId::clear:
         on = clear_btn.isOn();
         break;
-      case AppBtnID::rev:
+      case AppBtnId::rev:
         on = rev_btn.isOn();
         break;
-      case AppBtnID::run:
+      case AppBtnId::run:
         on = run_btn.isOn();
         break;
       default:
@@ -228,8 +228,8 @@ struct AppButtons {
 #endif
 
     uint16_t new_bits = 0;
-    for (uint8_t i = 0; i < static_cast<uint8_t>(AppBtnID::size); ++i) {
-      if (isOn(static_cast<AppBtnID>(i))) {
+    for (uint8_t i = 0; i < static_cast<uint8_t>(AppBtnId::size); ++i) {
+      if (isOn(static_cast<AppBtnId>(i))) {
         new_bits |= (uint16_t)1 << i;
       }
     }
@@ -237,9 +237,9 @@ struct AppButtons {
       if (on_change) {
         uint16_t diff_bits = state_bits ^ new_bits;
         state_bits = new_bits;
-        for (uint8_t i = 0; i < static_cast<uint8_t>(AppBtnID::size); ++i) {
+        for (uint8_t i = 0; i < static_cast<uint8_t>(AppBtnId::size); ++i) {
           if (diff_bits & ((uint16_t)1 << i)) {
-            on_change(static_cast<AppBtnID>(i), !!(new_bits & ((uint16_t)1 << i)));
+            on_change(static_cast<AppBtnId>(i), !!(new_bits & ((uint16_t)1 << i)));
           }
         }
       }

@@ -7,6 +7,7 @@
 #include "app_oled.hpp"
 #include "looper.hpp"
 #include "image/recorder.h"
+#include "app_view/dialog.hpp"
 
 struct AppViewNormal {
   bool is_dirty = true;
@@ -24,11 +25,22 @@ struct AppViewNormal {
 
   float bpm = 120.0f;
 
+  Dialog alert_dialog;
+
   void init() {
     app_oled.drawFillBG();
     app_oled.drawTextMedium("LilaC Repeater", 14, 3, 0);
     is_dirty = true;
     app_oled.process();
+    looper.on_error = [this](LooperErrorType error_type, uint8_t track_idx){
+      switch (error_type) {
+        case LooperErrorType::ram_full:
+          alert_dialog.alert("Memory Full!");
+          break;
+        default:
+          break;
+      }
+    };
   }
 
   void update() {
@@ -39,7 +51,7 @@ struct AppViewNormal {
     snprintf(
       text_buf, sizeof(text_buf),
       "D%3d P%3d W%3d",
-      (uint8_t)(dry_vol * 101), (uint8_t)(pan * 101), (uint8_t)(wet_vol * 101)
+      (uint8_t)(dry_vol * 100), (uint8_t)(pan * 100), (uint8_t)(wet_vol * 100)
     );
     app_oled.drawTextSmall(text_buf, sizeof(text_buf), 0, 0);
     snprintf(text_buf, sizeof(text_buf), "%3d.%1dBPM", (uint16_t)bpm, (uint8_t)((bpm - (uint16_t)bpm) * 10));
@@ -56,11 +68,15 @@ struct AppViewNormal {
 
     snprintf(text_buf, sizeof(text_buf), "%3d L%3d", pos+1, length+1);
     app_oled.drawTextMedium(text_buf, sizeof(text_buf), 4, 0);
-    snprintf(text_buf, sizeof(text_buf), "x%1d.%02d FB%3d%%", (uint16_t)speed, (uint16_t)((speed - (uint16_t)speed) * 100), (uint8_t)(fdbk * 101));
+    snprintf(text_buf, sizeof(text_buf), "x%1d.%02d FB%3d%%", (uint16_t)speed, (uint16_t)((speed - (uint16_t)speed) * 100), (uint8_t)(fdbk * 100));
     app_oled.drawTextMedium(text_buf, sizeof(text_buf), 6, 0);
 
-    //snprintf(text_buf, sizeof(text_buf), "%03d(%03d)x%1d.%02d FB%03d%%", pos+1, length+1, (uint16_t)speed, (uint16_t)((speed - (uint16_t)speed) * 100), (uint8_t)(fdbk * 101));
-    //app_oled.drawTextSmall(text_buf, sizeof(text_buf), 5, 0);
+    if (looper.is_rec) {
+      // locked parameter
+      app_oled.drawInvert(4, 0, 10*8); // pos length
+      app_oled.drawInvert(5, 0, 10*8);
+      app_oled.drawInvert(6, 0, 6*8); // speed
+    }
 
     // content
     app_oled.drawPageBit(2, 0, 0b10000000);
@@ -93,7 +109,11 @@ struct AppViewNormal {
     if (looper.is_rec) {
       //app_oled.drawTextMedium("REC", 3, 6, 0);
       _drawImage(REC_IMG_TYPE_REC, 6, 112);
+    } else if (looper.is_empty) {
+      app_oled.drawTextMedium("New", 3, 6, 104);
     }
+
+    alert_dialog.update();
 
     app_oled.process();
   }
@@ -106,6 +126,7 @@ struct AppViewNormal {
   }
 
   void process() {
+    is_dirty = is_dirty || alert_dialog.process();
     if (is_dirty) {
       update();
       is_dirty = false;

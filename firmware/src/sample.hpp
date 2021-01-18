@@ -4,48 +4,104 @@
 #include <cstddef>
 #include <cassert>
 #include <utility>
+#include <array>
+
+constexpr uint16_t sample_rate = 48000;
 
 //constexpr size_t sample_max_buffer_size = (48000 * 60 * 5) // 5 minutes of floats at 48 khz
 constexpr size_t sample_max_buffer_size = (1024 * 1024 * 64 / sizeof(float)); // 64MB
 
-// stereo をLRの連続領域として扱うとめんどいので、別Sliceにする？
 struct SampleSlice {
+  enum class OverrapType : uint8_t {
+    none = 0,
+    by_size,
+    by_end,
+    by_loop_length
+  };
+
   size_t size;
   float* buf;
+  float  end_pos = 0.0f;
+  float  loop_length = 0.0f;
+  float  offset = 0.0f;
   float _pos = 0.0f;
   bool is_rec = false;
+  bool loop_range_enabled = false;
   float step_value = 1.0f;
-  bool is_overrap = false;
+  float feedback = 1.0f;
+  size_t _erase_pos = 0; // 上書き録音時に初期化すべき次のサンプルの位置を保持
+  OverrapType overrap = OverrapType::none;
 
-  void startRec() {
+
+  inline void initStepValue(float step) {
+    step_value = step;
+  }
+
+  inline float getRawPos() const {
+    return _pos;
+  };
+
+  inline bool isEmpty() const {
+    return end_pos == 0.0f;
+  }
+
+  inline void setFeedback(float fb) {
+    feedback = fb;
+  }
+
+  inline void setOffset(float ofst) {
+    if (ofst < end_pos) {
+      offset = ofst;
+    }
+  }
+
+  inline float getFeedback() {
+    return feedback;
+  }
+
+  inline void startRec() {
     is_rec = true;
   }
 
-  void endRec() {
+  inline void endRec() {
     is_rec = false;
-    size = _pos;
+    end_pos = _pos;
     reset();
   }
 
-  void reset() {
+  inline void reset() {
     _pos = 0.0f;
-    is_overrap = false;
+    overrap = OverrapType::none;
   }
 
-  void step(float v) {
+  inline void jump(float new_pos) {
+    if (new_pos < end_pos) {
+      _pos = new_pos;
+      overrap = OverrapType::none;
+    } else {
+      reset();
+    }
+  }
+
+  inline void step(float v) {
     step_value = v;
     volatile float tmp = _pos;
     tmp += v;
     if (tmp > (float)size) {
       tmp -= size;
-      is_overrap = true;
+      overrap = OverrapType::by_size;
+    } else if (end_pos > 0.0f && tmp > end_pos) {
+      overrap = OverrapType::by_end;
+    } else if (loop_range_enabled && tmp > loop_length) {
+      tmp -= loop_length;
+      overrap = OverrapType::by_loop_length;
     } else {
-      is_overrap = false;
+      overrap = OverrapType::none;
     }
     _pos = tmp;
   }
 
-  float get(float pos) {
+  inline float get(float pos) const {
     // linear interporation
     size_t spos = (size_t)pos;
     size_t epos = (spos+1) % size;
@@ -53,10 +109,37 @@ struct SampleSlice {
     return (1.0f - a) * buf[spos] + a * buf[epos];
   }
 
-  float getCurrent() {
-    return get(_pos);
+  inline float getPos() const {
+    if (!loop_range_enabled || offset == 0.0f) {
+      return _pos;
+    }
+    float p = _pos + offset;
+    if (p > end_pos) {
+      p -= end_pos;
+    }
+    return p;
   }
-  
+
+  inline float getCurrent() const {
+    return get(getPos());
+  }
+
+  void recValueAndStep(float step_, float value) {
+    step_value = step_;
+    float p = getPos();
+    size_t new_erase_pos = (size_t)p;
+    if (new_erase_pos != _erase_pos) {
+      // 消去後に書き込みが一回しか行われずにサンプルの録音が半端になるケースが考えられるけど、
+      // 別途録音開始/終了付近のスムージングをやれば良い様な気はする。
+      for (size_t i = _erase_pos; i <= new_erase_pos; ++i) {
+        buf[i] = buf[i] * feedback;
+      }
+      _erase_pos = new_erase_pos;
+    }
+    set(p, value);
+    step(step_);
+  }
+
   // このメソッドでは常にoverdub想定なので、上書きしたい場合は別途クリア
   void set(float pos, float value) {
     // TODO: これ正しいのか？
@@ -86,23 +169,23 @@ struct SampleSlice {
     }
   }
 
-  void setCurrent(float value) {
-    set(_pos, value);
+  inline void setCurrent(float value) {
+    set(getPos(), value);
   }
 
-  void clear(size_t pos) {
+  inline void clear(size_t pos) {
     buf[pos] = 0.0f;
   }
 
-  void setRow(size_t pos, float value) {
+  inline void setRaw(size_t pos, float value) {
     buf[pos] = value;
   }
 
-  float getRow(size_t pos) {
+  inline float getRaw(size_t pos) const {
     return buf[pos];
   }
 
-  SampleSlice slice(size_t start, size_t size) {
+  inline SampleSlice slice(size_t start, size_t size) const {
     return SampleSlice {
       .size = size,
       .buf = buf + start
@@ -112,7 +195,7 @@ struct SampleSlice {
 
 struct Sample {
   void init();
-  SampleSlice slice(size_t start, size_t size);
+  SampleSlice slice(size_t start, size_t size) const;
 };
 
 extern Sample sample;

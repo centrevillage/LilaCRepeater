@@ -4,6 +4,7 @@
 #include "app_buttons.hpp"
 #include "app_analogs.hpp"
 #include "app_view.hpp"
+#include "app_trigger_input.hpp"
 
 #include "app_input/base.hpp"
 #include "app_input/normal.hpp"
@@ -46,7 +47,7 @@ struct AppInputModeState {
     }, mode);
   }
 
-  bool button(AppBtnID id, bool on) {
+  bool button(AppBtnId id, bool on) {
     return std::visit([=](auto& m) {
       return m.button(id, on);
     }, mode);
@@ -70,17 +71,49 @@ struct AppInput {
     analogs.init();
     buttons.init();
 
-    buttons.on_change = [this](AppBtnID id, bool on) {
+    buttons.on_change = [this](AppBtnId id, bool on) {
       state.button(id, on);
     };
 
     analogs.on_change = [this](AppSliderID id, float value) {
       state.slider(id, value);
     };
+
+    triggers.on_change = [this](AppTrigId id, bool on) {
+      triggerOnChange(id, on);
+    };
+  }
+
+  void triggerOnChange(AppTrigId id, bool on) {
+    // TODO:
+    switch(id) {
+      case AppTrigId::sync:
+        break;
+      case AppTrigId::reset:
+        if (on) {
+          looper.reset();
+        }
+        break;
+      case AppTrigId::run:
+        if (on) {
+          looper.toggleRun();
+        }
+        break;
+      case AppTrigId::rec:
+        if (on) {
+          looper.toggleRec();
+        }
+        break;
+      case AppTrigId::ext_sync_sw:
+        break;
+      default:
+        break;
+    }
   }
 
   void process() {
     buttons.process();
+    triggers.process(); // TODO: use EXTI
     analogs.process();
 
     //bool is_dirty = buttons.process();
