@@ -28,9 +28,25 @@ enum class AppBtnId : uint8_t {
 struct AppButtons {
   uint16_t state_bits = 0;
   std::function<void(AppBtnId, bool)> on_change;
+
+// hardware version 0.3 ~
+#if 1
+  ButtonMatrix<GpioPin, 3, GpioPin, 3> btn_matrix {
+    .in_pins = {
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p29)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p30)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p31)),
+    },
+    .out_pins = {
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p26)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p27)),
+      GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p28))
+    }
+  };
+#endif
   
 // hardware version 0.2 ~
-#if 1
+#if 0
   ButtonSingle<GpioPin> mute_btn {
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p25))
   };
@@ -84,8 +100,21 @@ struct AppButtons {
 #endif
 
   void init() {
-// hardware version 0.2 ~
+// hardware version 0.3 ~
 #if 1
+    for (auto& in_pin : btn_matrix.in_pins) {
+      in_pin.enable();
+      in_pin.initInput(GpioPullMode::NO, GpioSpeedMode::HIGH);
+    }
+    for (auto& out_pin : btn_matrix.out_pins) {
+      out_pin.enable();
+      out_pin.initOutput(GpioOutputMode::PUSHPULL, GpioSpeedMode::HIGH);
+    }
+    btn_matrix.init();
+#endif
+
+// hardware version 0.2 ~
+#if 0
     mute_btn.pin.enable();
     mute_btn.pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
 
@@ -133,9 +162,43 @@ struct AppButtons {
 
   bool isOn(AppBtnId btn_id) {
     bool on = false;
+// hardware version 0.3 ~
+#if 1
+    switch (btn_id) {
+      case AppBtnId::track1:
+        on = btn_matrix.isOn(0, 0);
+        break;
+      case AppBtnId::track2:
+        on = btn_matrix.isOn(1, 0);
+        break;
+      case AppBtnId::track3:
+        on = btn_matrix.isOn(2, 0);
+        break;
+      case AppBtnId::mute:
+        on = btn_matrix.isOn(0, 1);
+        break;
+      case AppBtnId::rec:
+        on = btn_matrix.isOn(1, 1);
+        break;
+      case AppBtnId::track4:
+        on = btn_matrix.isOn(2, 1);
+        break;
+      case AppBtnId::clear:
+        on = btn_matrix.isOn(0, 2);
+        break;
+      case AppBtnId::rev:
+        on = btn_matrix.isOn(1, 2);
+        break;
+      case AppBtnId::run:
+        on = btn_matrix.isOn(2, 2);
+        break;
+      default:
+        break;
+    }
+#endif
 
 // hardware version 0.2 ~
-#if 1
+#if 0
     switch (btn_id) {
       case AppBtnId::mute:
         on = mute_btn.isOn();
@@ -208,8 +271,13 @@ struct AppButtons {
   }
 
   bool process() {
-// hardware version 0.2 ~
+// hardware version 0.3 ~
 #if 1
+    btn_matrix.process();
+#endif
+
+// hardware version 0.2 ~
+#if 0
     mute_btn.process();
     btn_matrix.process();
 #endif
