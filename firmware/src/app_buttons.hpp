@@ -25,6 +25,8 @@ enum class AppBtnId : uint8_t {
   size
 };
 
+constexpr uint8_t button_count = 9;
+
 struct AppButtons {
   uint16_t state_bits = 0;
   std::function<void(AppBtnId, bool)> on_change;

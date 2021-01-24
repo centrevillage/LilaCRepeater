@@ -1,6 +1,8 @@
 #ifndef LR_APP_INPUT_PROGRAM_H
 #define LR_APP_INPUT_PROGRAM_H
 
+#include "app_input/base.hpp"
+
 struct AppInputProgram {
   void init() {
     view.changeMode(AppViewProgram {});
@@ -14,6 +16,10 @@ struct AppInputProgram {
   }
 
   bool button(AppBtnId id, bool on) {
+    return false;
+  }
+
+  bool trigger(AppTrigId id, bool on) {
     return false;
   }
 

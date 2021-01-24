@@ -11,8 +11,8 @@ using namespace igb::daisy;
 
 enum class AppTrigId : uint8_t {
   sync = 0,
-  reset,
   run,
+  reset,
   rec,
   ext_sync_sw
 };
@@ -23,10 +23,10 @@ struct AppTriggerInput {
   std::array<GpioPin, trigger_count> pins = {
     // sync
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p10)),
-    // reset
-    GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p23)),
     // run
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p1)),
+    // reset
+    GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p23)),
     // rec
     GpioPin::newPin(daisy_pin_to_stm32_pin(DaisyGpioPinType::p24)),
     // ext_sync_sw
@@ -36,6 +36,13 @@ struct AppTriggerInput {
   uint8_t trig_bits = 0;
 
   std::function<void(AppTrigId, bool)> on_change;
+
+  inline void init() {
+    for (auto& pin : pins) {
+      pin.enable();
+      pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
+    }
+  }
 
   inline bool isOn(AppTrigId id) {
     return !pins[static_cast<uint8_t>(id)].read();

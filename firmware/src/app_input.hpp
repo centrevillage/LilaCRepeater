@@ -10,13 +10,12 @@
 #include "app_input/normal.hpp"
 #include "app_input/system.hpp"
 #include "app_input/program.hpp"
+#include "app_input/test.hpp"
 
 struct AppInputModeState {
-  std::variant<
-    AppInputNormal,
-    AppInputProgram,
-    AppInputSystem
-  > mode = AppInputNormal {};
+  using Mode = std::variant< AppInputNormal, AppInputProgram, AppInputSystem, AppInputTest>;
+
+  Mode mode = AppInputNormal {};
 
   void change(AppInputModeId m) {
     switch (m) {
@@ -28,6 +27,9 @@ struct AppInputModeState {
         break;
       case AppInputModeId::system:
         mode = AppInputSystem {};
+        break;
+      case AppInputModeId::test:
+        mode = AppInputTest {};
         break;
       default:
         break;
@@ -53,6 +55,12 @@ struct AppInputModeState {
     }, mode);
   }
 
+  bool trigger(AppTrigId id, bool on) {
+    return std::visit([=](auto& m) {
+      return m.trigger(id, on);
+    }, mode);
+  }
+
   bool slider(AppSliderID id, float value) {
     return std::visit([=](auto& m) {
       return m.slider(id, value);
@@ -67,9 +75,13 @@ struct AppInput {
   bool is_dirty = true;
   
   void init() {
-    state.init();
+#ifdef TESTMODE
+    current_mode = AppInputModeId::test;
+#endif
+    state.change(current_mode);
     analogs.init();
     buttons.init();
+    triggers.init();
 
     buttons.on_change = [this](AppBtnId id, bool on) {
       state.button(id, on);
@@ -80,7 +92,9 @@ struct AppInput {
     };
 
     triggers.on_change = [this](AppTrigId id, bool on) {
-      triggerOnChange(id, on);
+      if (!state.trigger(id, on)) {
+        triggerOnChange(id, on);
+      }
     };
   }
 
@@ -92,19 +106,24 @@ struct AppInput {
       case AppTrigId::reset:
         if (on) {
           looper.reset();
+          view.dirty();
         }
         break;
       case AppTrigId::run:
         if (on) {
           looper.toggleRun();
+          view.dirty();
         }
         break;
       case AppTrigId::rec:
         if (on) {
           looper.toggleRec();
+          view.dirty();
         }
         break;
       case AppTrigId::ext_sync_sw:
+        looper.setExtSync(on);
+        view.dirty();
         break;
       default:
         break;

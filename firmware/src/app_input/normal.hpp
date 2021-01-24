@@ -108,6 +108,10 @@ struct AppInputNormal {
     return false;
   }
 
+  bool trigger(AppTrigId id, bool on) {
+    return false;
+  }
+
   bool slider(AppSliderID id, float value) {
     if (!view.isMode<AppViewNormal>()) { return false; }
     auto& view_mode = view.getMode<AppViewNormal>();

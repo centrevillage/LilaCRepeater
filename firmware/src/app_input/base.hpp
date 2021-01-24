@@ -8,8 +8,8 @@
 enum class AppInputModeId : uint8_t {
   normal = 0,
   program,
-  system
+  system,
+  test
 };
-
 
 #endif /* LR_APP_INPUT_BASE_H */

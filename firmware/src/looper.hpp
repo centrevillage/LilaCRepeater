@@ -110,6 +110,14 @@ enum class LooperErrorType {
 /*
  * ルーパーへの操作を行う。
  */
+// TODO: pos/lengthを外部設定された場合の反映タイミング
+//   外部同期なし:
+//    ・再生中のサンプルが分割位置に到達したタイミング
+//      ・分割位置に到達した判定
+//        ・lenght/sizeによる位置リセットがある場合
+//          ・overrapフラグで判定
+//        ・それ以外の場合
+//          ・サンプルの絶対位置で判定
 struct Looper {
   float dry_vol = 1.0f;
   float wet_vol = 1.0f;
@@ -294,7 +302,11 @@ struct Looper {
   inline float sampleByStep() {
     float bps = bpm / 60.0f;
     float sps = bps * 4.0f; // step per second
-    return sample_rate * sps;
+    return (float)sample_rate * sps;
+  }
+
+  inline void setExtSync(bool flag) {
+    is_ext_sync = flag;
   }
 
   float _calcBpmFromLength() {
