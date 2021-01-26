@@ -109,6 +109,25 @@ struct AppInputNormal {
   }
 
   bool trigger(AppTrigId id, bool on) {
+    if (!view.isMode<AppViewNormal>()) { return false; }
+    auto& view_mode = view.getMode<AppViewNormal>();
+
+    switch (id) {
+      case AppTrigId::sync:
+        break;
+      case AppTrigId::run:
+        break;
+      case AppTrigId::reset:
+        break;
+      case AppTrigId::rec:
+        break;
+      case AppTrigId::ext_sync_sw:
+        view_mode.setIsExtSync(on);
+        break;
+      default:
+        break;
+    }
+
     return false;
   }
 

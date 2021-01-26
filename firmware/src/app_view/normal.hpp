@@ -18,6 +18,7 @@ struct AppViewNormal {
   uint8_t pos = 0;     /* 0 ~ 127 */
   float fdbk = 0;       /* 0.0 ~ 1.0 */
   float speed = 0;      /* [0.5, ..., 1, ..., 2] */
+  bool is_ext_syc = false;
 
   uint8_t current_pos = 0; // 現在位置の表示用
   uint8_t unmuted_track = 0b1111;
@@ -56,6 +57,9 @@ struct AppViewNormal {
     app_oled.drawTextSmall(text_buf, sizeof(text_buf), 0, 0);
     snprintf(text_buf, sizeof(text_buf), "%3d.%1dBPM", (uint16_t)bpm, (uint8_t)((bpm - (uint16_t)bpm) * 10));
     app_oled.drawTextSmall(text_buf, sizeof(text_buf), 0, 128-(5*8));
+    if (is_ext_syc) {
+      app_oled.drawInvert(0, 128-(5*8), 5*8); // speed
+    }
 
     // track
     for (uint8_t i = 0; i < 4; ++i) {
@@ -133,45 +137,15 @@ struct AppViewNormal {
     }
   }
 
-  void setDryVol(float v) {
-    dry_vol = v;
-    is_dirty = true;
-  }
-
-  void setWetVol(float v) {
-    wet_vol = v;
-    is_dirty = true;
-  }
-
-  void setPan(float v) {
-    pan = v;
-    is_dirty = true;
-  }
-
-  void setLength(uint8_t v) {
-    length = v;
-    is_dirty = true;
-  }
-
-  void setPos(uint8_t v) {
-    pos = v;
-    is_dirty = true;
-  }
-
-  void setFdbk(float v) {
-    fdbk = v;
-    is_dirty = true;
-  }
-
-  void setSpeed(float v) {
-    speed = v;
-    is_dirty = true;
-  }
-
-  void setCurrentPos(uint8_t v) {
-    current_pos = v;
-    is_dirty = true;
-  }
+  void setDryVol(float v) { dry_vol = v; is_dirty = true; }
+  void setWetVol(float v) { wet_vol = v; is_dirty = true; }
+  void setPan(float v) { pan = v; is_dirty = true; }
+  void setLength(uint8_t v) { length = v; is_dirty = true; }
+  void setPos(uint8_t v) { pos = v; is_dirty = true; }
+  void setFdbk(float v) { fdbk = v; is_dirty = true; }
+  void setSpeed(float v) { speed = v; is_dirty = true; }
+  void setCurrentPos(uint8_t v) { current_pos = v; is_dirty = true; }
+  void setIsExtSync(bool flag) { is_ext_syc = flag; is_dirty = true; }
 };
 
 #endif /* LR_APP_VIEW_NORMAL_H */

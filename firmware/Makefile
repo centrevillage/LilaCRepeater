@@ -9,6 +9,7 @@ CPP_SOURCES += igb_sdk/igb_sdk/font/bitmap/cvfont_8x16.cpp
 C_SOURCES = $(wildcard $(SRC_DIR)*.c)
 C_SOURCES += igb_sdk/igb_sdk/util/text.c
 
+#C_INCLUDES = -Isrc -Iigb_sdk -DUSE_DAISY -DUSE_FULL_LL_DRIVER -DTESTMODE
 C_INCLUDES = -Isrc -Iigb_sdk -DUSE_DAISY -DUSE_FULL_LL_DRIVER
 
 CPP_STANDARD = -std=c++17 -fconcepts
