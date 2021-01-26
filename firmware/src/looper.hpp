@@ -187,7 +187,7 @@ struct Looper {
   }
 
   void rec() {
-    if (!is_run) {
+    if (!is_rec) {
       is_rec = true;
       if (is_ext_sync) {
         is_quantized_rec = true;
@@ -219,9 +219,6 @@ struct Looper {
   }
 
   void reset() {
-    if (is_rec) {
-      stopRec();
-    }
     currentTrack().reset(); 
   }
 

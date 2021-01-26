@@ -6,6 +6,8 @@
 #include <utility>
 #include <array>
 
+// TODO: もうちょっと整理したら igb_sdk/dsp 行き
+
 constexpr uint16_t sample_rate = 48000;
 
 //constexpr size_t sample_max_buffer_size = (48000 * 60 * 5) // 5 minutes of floats at 48 khz
