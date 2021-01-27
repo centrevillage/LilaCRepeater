@@ -4,6 +4,8 @@
 #include "hardware.hpp"
 #include <functional>
 
+// TODO: 中点のキャリブレーション設定
+
 // Daisyのピン番号が0 originなのでハードウェアのGPIO番号-1で定義する
 #define SLIDER_DRY_VOL_PIN 22-1
 #define SLIDER_WET_VOL_PIN 21-1
@@ -24,7 +26,7 @@ enum class AppSliderID : uint8_t {
 };
 constexpr size_t slider_count = 7;
 
-constexpr float slider_value_border_threshold = 0.001;
+constexpr float slider_value_border_threshold = 0.01;
 
 struct AppAnalogs {
 
@@ -57,6 +59,12 @@ struct AppAnalogs {
         value = 1.0f;
       } else if (value < slider_value_border_threshold) {
         value = 0.0f;
+      } else {
+        // rescale
+        value = (value - slider_value_border_threshold) / (1.0f - slider_value_border_threshold*2.0f);
+        if (value > 1.0f) {
+          value = 1.0f;
+        }
       }
       if (slider_values[i] != value) {
         slider_values[i] = value;
