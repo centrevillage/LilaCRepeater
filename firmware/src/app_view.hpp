@@ -95,10 +95,7 @@ struct AppView {
   AppViewModeState state;
 
   void init() {
-    app_oled.spi.prepareSpiMasterOutOnly(
-      daisy_pin_to_stm32_pin(DaisyGpioPinType::p11) /* MOSI pin */,
-      daisy_pin_to_stm32_pin(DaisyGpioPinType::p9) /* SCK pin */,
-      SpiBaudratePrescaler::DIV2);
+    app_oled.spi.initMasterOutOnly(SpiBaudratePrescaler::div2);
     app_oled.init();
 
     state.init();

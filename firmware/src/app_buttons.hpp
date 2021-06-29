@@ -106,11 +106,11 @@ struct AppButtons {
 #if 1
     for (auto& in_pin : btn_matrix.in_pins) {
       in_pin.enable();
-      in_pin.initInput(GpioPullMode::NO, GpioSpeedMode::HIGH);
+      in_pin.initInput(GpioPullMode::no, GpioSpeedMode::high);
     }
     for (auto& out_pin : btn_matrix.out_pins) {
       out_pin.enable();
-      out_pin.initOutput(GpioOutputMode::PUSHPULL, GpioSpeedMode::HIGH);
+      out_pin.initOutput(GpioOutputMode::pushpull, GpioSpeedMode::high);
     }
     btn_matrix.init();
 #endif

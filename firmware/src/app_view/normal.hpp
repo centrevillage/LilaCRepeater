@@ -9,6 +9,7 @@
 #include "image/recorder.h"
 #include "app_view/dialog.hpp"
 
+// TODO: 現在の空きRAM表示
 struct AppViewNormal {
   bool is_dirty = true;
   float dry_vol = 0;    /* 0.0 ~ 1.0 */

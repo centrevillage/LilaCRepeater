@@ -6,6 +6,7 @@ SRC_DIR=./src/
 CPP_SOURCES = $(wildcard $(SRC_DIR)*.cpp) $(wildcard $(SRC_DIR)image/*.cpp)
 CPP_SOURCES += igb_sdk/igb_sdk/font/bitmap/cvfont_5x8.cpp
 CPP_SOURCES += igb_sdk/igb_sdk/font/bitmap/cvfont_8x16.cpp
+CPP_SOURCES += igb_sdk/igb_stm32/periph/systick.cpp
 C_SOURCES = $(wildcard $(SRC_DIR)*.c)
 C_SOURCES += igb_sdk/igb_sdk/util/text.c
 

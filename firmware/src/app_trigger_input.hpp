@@ -40,7 +40,7 @@ struct AppTriggerInput {
   inline void init() {
     for (auto& pin : pins) {
       pin.enable();
-      pin.initInput(GpioPullMode::UP, GpioSpeedMode::HIGH);
+      pin.initInput(GpioPullMode::up, GpioSpeedMode::high);
     }
   }
 
